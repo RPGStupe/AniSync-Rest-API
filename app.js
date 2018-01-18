@@ -14,6 +14,12 @@ app.get('/api/anime/getAnime/:name', function (req, res) {
     }, req.params.name);
 });
 
+// app.get('/api/watchlistImport/:old_uid/:new_uid', function (req, res) {
+//     Scraper.watchlistImport(function (json) {
+//         res.json(json);
+//     }, req.params.old_uid, req.params.new_uid)
+// });
+
 app.get('/api/anime/getAllAnime', function (req, res) {
     Anime.getAllAnime(function (result) {
         res.json(result);

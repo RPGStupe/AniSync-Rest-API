@@ -18,6 +18,23 @@ function getAnimeSearchMasteranime(name, callback) {
     });
 }
 
+async function getAnimeSearchMasteranimeWatchlistImport(name) {
+    var url = 'https://www.masterani.me/api/anime/search?search=' + name + '&sb=true';
+    var quote = await getRequestWatchlistImport(url);
+    var jsonResult = JSON.parse(quote);
+    return jsonResult;
+}
+
+function getRequestWatchlistImport(url) {
+    return new Promise(function (resolve, reject) {
+        var quote;
+        request(encodeURI(url), function (error, response, body) {
+            quote = body;
+            resolve(quote);
+        });
+    });
+}
+
 function getAnimeDetailMasteranime(name, callback) {
     getAnimeSearchMasteranime(name, function (jsonResult) {
         var urlAnimeInfo = 'https://www.masterani.me/api/anime/' + jsonResult[0].id + '/detailed';
@@ -53,7 +70,7 @@ function updateEpisodes(data, ref) {
         jsonEp = {
             masteranime_id: item.info.id,
             masteranime_anime_id: item.info.anime_id,
-            episode:  item.info.episode,
+            episode: item.info.episode,
             episode_title: item.info.title,
             aired: item.info.aired,
             description: item.info.description,
@@ -61,7 +78,7 @@ function updateEpisodes(data, ref) {
         };
         ref.doc(item.info.episode).set(jsonEp).then(function () {
 
-        })
+        });
     })
 }
 
@@ -272,6 +289,75 @@ function getAnimeLinksDirect(name, episode, callback) {
     });
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function newWatchlistEntryImportWatchlist(dataDB, dataSearch) {
+    var data = {
+        title: dataSearch.title,
+        episode: dataDB.episode,
+        status: dataDB.status,
+        rating: dataDB.rating,
+        poster: dataDB.poster,
+        episodeCount: dataDB.episodeCount,
+        masteranime_id: dataSearch.id,
+        masteranime_slug: dataSearch.slug
+    };
+    return data;
+}
+
+async function watchlistImport(old_uid, new_uid, callback) {
+    var json = require('../proxsync-db.json');
+    var watchlistJsonOld = json.users[old_uid].watchlist;
+    var keys = Object.keys(watchlistJsonOld);
+    var jsonResult = {successful:[], failed:[]};
+    var indexSuccessful = 0;
+    var indexFailed = 0;
+    callback({status:"started"});
+    for (var i = 0, len = keys.length; i < len; i++) {
+        var realTitle = watchlistJsonOld[keys[i]].title;
+        var title = watchlistJsonOld[keys[i]].title;
+        var titleSearch = title;
+        if (title.length > 30) {
+            titleSearch = titleSearch.substr(0, 30);
+        }
+        var result = await getAnimeSearchMasteranimeWatchlistImport(titleSearch);
+        if (result.length !== 0) {
+            title = title.replace(/[^\x00-\x7F]/g, "?");
+            title = title.replace(/\(tv\)/ig, "").trim().toLowerCase();
+            for (var x = 0; x < result.length; x++) {
+                var title2 = result[x].title;
+                title2 = title2.replace(/[^\x00-\x7F]/g, "?");
+                title2 = title2.replace(/\(tv\)/ig, "").trim().toLowerCase();
+                if (title === title2) {
+                    console.log("Successful: " + realTitle);
+                    jsonResult.successful[indexSuccessful] = realTitle;
+                    indexSuccessful++;
+                    var watchlistRef = db.collection('users').doc(new_uid).collection('watchlist');
+                    watchlistRef.add(newWatchlistEntryImportWatchlist(watchlistJsonOld[keys[i]], result[x])).then(function (ref) {
+                        var documentId = ref.id;
+                        console.log("added entry to watchlist; id: " + documentId);
+                    });
+                    break;
+                } else {
+                    if (x === result.length - 1) {
+                        console.log("Failed: " + realTitle);
+                        jsonResult.failed[indexFailed] = realTitle;
+                        indexFailed++;
+                    }
+                }
+            }
+        } else {
+            console.log("Failed: " + realTitle);
+            jsonResult.failed[indexFailed] = realTitle;
+            indexFailed++;
+        }
+        await sleep(1000);
+    }
+}
+
+
 module.exports.getAnimeLinksEmbedded = function (callback, name, episode) {
     getAnimeLinksEmbedded(name, episode, callback);
 };
@@ -286,4 +372,8 @@ module.exports.addAnimeToDatabase = function (callback, name) {
 
 module.exports.addAnimeToWatchlist = function (callback, user, name, episode) {
     addAnimeToWatchlist(user, name, episode, callback);
+};
+
+module.exports.watchlistImport = function (callback, old_uid, new_uid) {
+    watchlistImport(old_uid, new_uid, callback);
 };
