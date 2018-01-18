@@ -1,0 +1,17 @@
+{
+  "name": "anisync",
+  "version": "1.0.0",
+  "description": "Anime Platform",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "body-parser": "*",
+    "express": "*",
+    "firebase-admin": "*",
+    "htmlparser": "^1.7.7"
+  },
+  "author": "Fabian Iwanecki",
+  "license": "ISC"
+}
