@@ -1,8 +1,4 @@
 var db = require('../firebase');
-// Add anime
-module.exports.addAnime = function (callback, data) {
-    db.collection('anime').doc().set(data).then(callback);
-};
 
 // Get anime
 module.exports.getAnime = function (callback, id) {

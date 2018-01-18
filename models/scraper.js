@@ -8,7 +8,7 @@ function getRequest(url, callback) {
             callback(body);
         }
     });
-};
+}
 
 function getAnimeSearchMasteranime(name, callback) {
     var url = 'https://www.masterani.me/api/anime/search?search=' + name + '&sb=true';
@@ -47,6 +47,24 @@ function newAnimeEntry(jsonResult) {
     return data;
 }
 
+function updateEpisodes(data, ref) {
+    console.log(data.episodes);
+    data.episodes.forEach(function (item) {
+        jsonEp = {
+            masteranime_id: item.info.id,
+            masteranime_anime_id: item.info.anime_id,
+            episode:  item.info.episode,
+            episode_title: item.info.title,
+            aired: item.info.aired,
+            description: item.info.description,
+            masteranime_thumbnail: item.thumbnail
+        };
+        ref.doc(item.info.episode).set(jsonEp).then(function () {
+
+        })
+    })
+}
+
 function addAnimeToDatabase(name, callback) {
     getAnimeDetailMasteranime(name, function (jsonResult) {
         // Check if anime already exists
@@ -59,6 +77,7 @@ function addAnimeToDatabase(name, callback) {
                 db.collection('anime').add(newAnimeEntry(jsonResult)).then(function (ref) {
                     documentId = ref.id;
                     console.log('Added document with ID: ', ref.id);
+                    updateEpisodes(jsonResult, animeRef.doc(documentId).collection("episodes"));
                     callback({status: 'Added database entry'});
                 });
             } else {
@@ -66,6 +85,7 @@ function addAnimeToDatabase(name, callback) {
                 var data = newAnimeEntry(jsonResult);
                 doc.ref.set(data).then(function () {
                     documentId = doc.ref.id;
+                    updateEpisodes(jsonResult, animeRef.doc(documentId).collection("episodes"));
                     callback({status: 'Updated database entry'});
                 });
             }
