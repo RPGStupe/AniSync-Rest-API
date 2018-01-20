@@ -1,4 +1,5 @@
 var request = require('request');
+var Anime = require('./anime');
 var htmlparser = require('htmlparser');
 var db = require('../firebase');
 
@@ -11,6 +12,9 @@ function getRequest(url, callback) {
 }
 
 function getAnimeSearchMasteranime(name, callback) {
+    if (name.length > 30) {
+        name = name.substr(0, 30);
+    }
     var url = 'https://www.masterani.me/api/anime/search?search=' + name + '&sb=true';
     getRequest(url, function (body) {
         var jsonResult = JSON.parse(body);
@@ -18,98 +22,138 @@ function getAnimeSearchMasteranime(name, callback) {
     });
 }
 
-async function getAnimeSearchMasteranimeWatchlistImport(name) {
-    var url = 'https://www.masterani.me/api/anime/search?search=' + name + '&sb=true';
-    var quote = await getRequestWatchlistImport(url);
-    var jsonResult = JSON.parse(quote);
-    return jsonResult;
-}
-
-function getRequestWatchlistImport(url) {
-    return new Promise(function (resolve, reject) {
-        var quote;
-        request(encodeURI(url), function (error, response, body) {
-            quote = body;
-            resolve(quote);
-        });
+function getAnimeDetailMasteranime(id, callback) {
+    var urlAnimeInfo = 'https://www.masterani.me/api/anime/' + id + '/detailed';
+    getRequest(urlAnimeInfo, function (body) {
+        var jsonResult = JSON.parse(body);
+        callback(jsonResult);
     });
 }
 
-function getAnimeDetailMasteranime(name, callback) {
-    getAnimeSearchMasteranime(name, function (jsonResult) {
-        var urlAnimeInfo = 'https://www.masterani.me/api/anime/' + jsonResult[0].id + '/detailed';
-        getRequest(urlAnimeInfo, function (body) {
-            var jsonResult = JSON.parse(body);
-            callback(jsonResult);
-        });
-    });
-}
-
-function newAnimeEntry(jsonResult) {
+function createAnimeEntryDatabase(masteranimeDetailJson) {
     var genres = {};
 
-    jsonResult.genres.forEach(function (item) {
+    masteranimeDetailJson.genres.forEach(function (item) {
         genres[item.name] = true;
     });
 
     var data = {
-        title: jsonResult.info.title,
-        masteranime_id: jsonResult.info.id,
-        masteranime_slug: jsonResult.info.slug,
-        episode_count: jsonResult.info.episode_count,
-        synopsis: jsonResult.info.synopsis,
-        synonyms: jsonResult.synonyms,
+        title: masteranimeDetailJson.info.title,
+        masteranime_id: masteranimeDetailJson.info.id,
+        masteranime_slug: masteranimeDetailJson.info.slug,
+        episode_count: masteranimeDetailJson.info.episode_count,
+        synopsis: masteranimeDetailJson.info.synopsis,
+        synonyms: masteranimeDetailJson.synonyms,
         masteranime_genres: genres
     };
     return data;
 }
 
-function updateEpisodes(data, ref) {
-    console.log(data.episodes);
-    data.episodes.forEach(function (item) {
-        jsonEp = {
-            masteranime_id: item.info.id,
-            masteranime_anime_id: item.info.anime_id,
-            episode: item.info.episode,
-            episode_title: item.info.title,
-            aired: item.info.aired,
-            description: item.info.description,
-            masteranime_thumbnail: item.thumbnail
-        };
-        ref.doc(item.info.episode).set(jsonEp).then(function () {
+function createAnimeEntryJson(masteranimeDetailJson) {
+    var genres = {};
 
+    masteranimeDetailJson.genres.forEach(function (item) {
+        genres[item.name] = true;
+    });
+
+    var data = {
+        title: masteranimeDetailJson.info.title,
+        masteranime_id: masteranimeDetailJson.info.id,
+        masteranime_slug: masteranimeDetailJson.info.slug,
+        episode_count: masteranimeDetailJson.info.episode_count,
+        synopsis: masteranimeDetailJson.info.synopsis,
+        synonyms: masteranimeDetailJson.synonyms,
+        masteranime_genres: genres
+    };
+
+    data.episodes = [];
+
+    for (var i = 0; i < masteranimeDetailJson.episodes.length; i++) {
+        dataEp = {
+            masteranime_id: episode.info.id,
+            masteranime_anime_id: episode.info.anime_id,
+            episode: episode.info.episode,
+            episode_title: episode.info.title,
+            aired: episode.info.aired,
+            description: episode.info.description,
+            masteranime_thumbnail: episode.thumbnail
+        };
+        data.episodes[i] = dataEp;
+    }
+    return data;
+}
+
+function updateEpisodes(masteranimeDetailJson, animeDocRef, callback) {
+    var counter = 0;
+    masteranimeDetailJson.episodes.forEach(function (episode, index, episodes) {
+        jsonEp = {
+            masteranime_id: episode.info.id,
+            masteranime_anime_id: episode.info.anime_id,
+            episode: episode.info.episode,
+            episode_title: episode.info.title,
+            aired: episode.info.aired,
+            description: episode.info.description,
+            masteranime_thumbnail: episode.thumbnail
+        };
+        animeDocRef.collection("episodes").doc(item.info.episode).set(jsonEp).then(function () {
+            counter++;
+            if (counter === episodes.length) {
+                callback();
+            }
         });
     })
 }
 
-function addAnimeToDatabase(name, callback) {
-    getAnimeDetailMasteranime(name, function (jsonResult) {
-        // Check if anime already exists
-        var animeRef = db.collection('anime');
-        var queryRef = animeRef.where('title', '==', jsonResult.info.title);
-        var documentId;
-
-        queryRef.get().then(function (snapshot) {
-            if (snapshot.docs.length === 0) {
-                db.collection('anime').add(newAnimeEntry(jsonResult)).then(function (ref) {
-                    documentId = ref.id;
-                    console.log('Added document with ID: ', ref.id);
-                    updateEpisodes(jsonResult, animeRef.doc(documentId).collection("episodes"));
-                    callback({status: 'Added database entry'});
-                });
-            } else {
-                var doc = snapshot.docs[0];
-                var data = newAnimeEntry(jsonResult);
-                doc.ref.set(data).then(function () {
-                    documentId = doc.ref.id;
-                    updateEpisodes(jsonResult, animeRef.doc(documentId).collection("episodes"));
-                    callback({status: 'Updated database entry'});
-                });
-            }
-        }).catch(function (err) {
-            console.log('Error getting documents', err);
-            callback({status: "Error getting database entry"});
+function addAnimeEntryToDatabase(masteranimeDetailed, callback) {
+    var animeEntry = createAnimeEntryDatabase(masteranimeDetailed);
+    var animeRef = db.collection('anime');
+    animeRef.add(animeEntry).then(function (ref) {
+        var documentId = ref.id;
+        console.log('Added document with ID: ', ref.id);
+        updateEpisodes(masteranimeDetailed, animeRef.doc(documentId).collection("episodes"), function () {
+            Anime.getAnimeFromDocumentId(documentId, function (result) {
+                callback(result);
+            });
         });
+    });
+}
+
+function getAnimeId(name, callback) {
+    getAnimeSearchMasteranime(name, function (searchResult) {
+        callback(searchResult.info.id);
+    });
+}
+
+function addAnimeToDatabase(name, callback) {
+    getAnimeId(name, function (id) {
+        getAnimeDetailMasteranime(id, function (jsonResult) {
+            // Check if anime already exists
+            var animeRef = db.collection('anime');
+            var queryRef = animeRef.where('title', '==', jsonResult.info.title);
+            var documentId;
+
+            queryRef.get().then(function (snapshot) {
+                if (snapshot.docs.length === 0) {
+                    db.collection('anime').add(createAnimeEntryDatabase(jsonResult)).then(function (ref) {
+                        documentId = ref.id;
+                        console.log('Added document with ID: ', ref.id);
+                        updateEpisodes(jsonResult, animeRef.doc(documentId).collection("episodes"));
+                        callback({status: 'Added database entry'});
+                    });
+                } else {
+                    var doc = snapshot.docs[0];
+                    var data = createAnimeEntryDatabase(jsonResult);
+                    doc.ref.set(data).then(function () {
+                        documentId = doc.ref.id;
+                        updateEpisodes(jsonResult, animeRef.doc(documentId).collection("episodes"));
+                        callback({status: 'Updated database entry'});
+                    });
+                }
+            }).catch(function (err) {
+                console.log('Error getting documents', err);
+                callback({status: "Error getting database entry"});
+            });
+        })
     })
 }
 
@@ -290,7 +334,9 @@ function getAnimeLinksDirect(name, episode, callback) {
 }
 
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(function (resolve) {
+        setTimeout(resolve, ms)
+    });
 }
 
 function newWatchlistEntryImportWatchlist(dataDB, dataSearch) {
@@ -311,10 +357,10 @@ async function watchlistImport(old_uid, new_uid, callback) {
     var json = require('../proxsync-db.json');
     var watchlistJsonOld = json.users[old_uid].watchlist;
     var keys = Object.keys(watchlistJsonOld);
-    var jsonResult = {successful:[], failed:[]};
+    var jsonResult = {successful: [], failed: []};
     var indexSuccessful = 0;
     var indexFailed = 0;
-    callback({status:"started"});
+    callback({status: "started"});
     for (var i = 0, len = keys.length; i < len; i++) {
         var realTitle = watchlistJsonOld[keys[i]].title;
         var title = watchlistJsonOld[keys[i]].title;
@@ -358,6 +404,23 @@ async function watchlistImport(old_uid, new_uid, callback) {
 }
 
 
+function getAnimeDetailMasteranimeFromId(id, callback) {
+    var urlAnimeInfo = 'https://www.masterani.me/api/anime/' + id + '/detailed';
+    getRequest(urlAnimeInfo, function (body) {
+        var jsonResult = JSON.parse(body);
+        callback(jsonResult);
+    });
+}
+
+function addAnimeToDatabaseFromId(id, callback) {
+    getAnimeDetailMasteranimeFromId(id, function (result) {
+        addAnimeEntryToDatabase(result, function (animeEntry) {
+            callback(animeEntry);
+        })
+    })
+}
+
+
 module.exports.getAnimeLinksEmbedded = function (callback, name, episode) {
     getAnimeLinksEmbedded(name, episode, callback);
 };
@@ -376,4 +439,8 @@ module.exports.addAnimeToWatchlist = function (callback, user, name, episode) {
 
 module.exports.watchlistImport = function (callback, old_uid, new_uid) {
     watchlistImport(old_uid, new_uid, callback);
+};
+
+module.exports.addAnimeToDatabaseFromId = function (id, callback) {
+    addAnimeToDatabaseFromId(id, callback);
 };

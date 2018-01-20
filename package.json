@@ -10,7 +10,8 @@
     "body-parser": "*",
     "express": "*",
     "firebase-admin": "*",
-    "htmlparser": "^1.7.7"
+    "htmlparser": "^1.7.7",
+    "ws": "*"
   },
   "author": "Fabian Iwanecki",
   "license": "ISC"
