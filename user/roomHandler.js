@@ -5,7 +5,7 @@ let RoomHandler = function () {
 
     this.clearRoomHandlerArrays = function () {
         this.sessions = this.sessions.filter(function(n){ return n !== undefined });
-        this.roomsId = this.roomsId.filter(function(n){ return n !== undefined });
+        this.roomSession = this.roomSession.filter(function(n){ return n !== undefined });
     };
 
     this.getRoomBySession = function(session) {

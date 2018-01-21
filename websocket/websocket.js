@@ -5,11 +5,48 @@ const Room = require('../user/room');
 const UserSessionHandler = require('./userSessionHandler');
 const fs = require('fs');
 
-const wss = new WebSocket.Server({port:3001});
+const wss = new WebSocket.Server({port: 3001});
 
+function noop() {
+}
+
+function heartbeat() {
+    this.isAlive = true;
+}
+
+const interval = setInterval(function ping() {
+    wss.clients.forEach(function each(ws) {
+        if (ws.isAlive === false) {
+            let room = RoomHandler.getInstance().getRoomBySession(ws);
+            console.log("Closed through ping");
+            if (room !== undefined) {
+                room.removeSession(ws);
+            }
+            return ws.terminate();
+        }
+        ws.isAlive = false;
+        ws.ping(noop());
+    });
+}, 1000);
 
 wss.on('connection', function connection(ws, req) {
-    ws.send(JSON.stringify({status:"HALLO"}));
+    ws.send(JSON.stringify({status: "HALLO"}));
+
+    ws.isAlive = true;
+    ws.on('pong', heartbeat);
+
+    ws.on('close', function () {
+        console.log("Closed through onclose");
+        let room = RoomHandler.getInstance().getRoomBySession(ws);
+        if (room !== undefined) {
+            room.removeSession(ws);
+        }
+    });
+
+    ws.on('error', function(e){
+        console.log(e);
+    });
+
     ws.on('message', function incoming(message) {
         const jsonMsg = JSON.parse(message);
         console.log("message");
@@ -89,6 +126,7 @@ wss.on('connection', function connection(ws, req) {
             if (room !== undefined) {
                 room.addVideo(jsonMsg.url);
             }
+            ws.send(JSON.stringify({action:'video',url:jsonMsg.url}));
         } else if ('playNow' === jsonMsg.action) {
             let room = RoomHandler.getInstance().getRoomBySession(ws);
             if (room !== undefined) {
@@ -121,6 +159,8 @@ wss.on('connection', function connection(ws, req) {
         } else if ('current' === jsonMsg.action) {
             let room = RoomHandler.getInstance().getRoomBySession(ws);
             if (room !== undefined) {
+                console.log("Set current to: " + jsonMsg.current);
+                room.timestamp = jsonMsg.current;
                 room.current = jsonMsg.current;
             }
         } else if ('addToWatchlist' === jsonMsg.action) {

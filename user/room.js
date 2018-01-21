@@ -18,11 +18,11 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
     this.autoNext = false;
     this.anime = undefined;
     this.current = undefined;
+    this.sessions = [];
 
     do {
         this.id = Math.floor(Math.random() * (10000));
     } while (RoomHandler.getInstance().roomsId[this.id]);
-    this.sessions = [];
 
     RoomHandler.getInstance().roomSession[RoomHandler.getInstance().roomSession.length] = this;
     RoomHandler.getInstance().sessions[RoomHandler.getInstance().sessions.length] = host;
@@ -69,7 +69,7 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
 
 
     this.addSession(host, hostname, hostuid, isHostAnonymous);
-    RoomHandler.getInstance().roomsId[this.id.toString()] = this;
+    RoomHandler.getInstance().roomsId[this.id] = this;
 
 
     function updatePlaylistInfo(video) {
@@ -226,27 +226,6 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
         this.playlist = this.playlist.filter(function (n) {
             return n !== undefined
         });
-    };
-
-
-    this.sendVideoToSession = function (session, newJoin) {
-        if (newJoin) {
-            if (this.timestamp !== undefined) {
-                this.pause(this.timestamp, session, false);
-            }
-        }
-
-        let url = this.playlist[0].url;
-        let message = {
-            action: "video",
-            url: url
-        };
-        if (this.timestamp == null) {
-            message.current = 0;
-        } else {
-            message.current = this.timestamp;
-        }
-        UserSessionHandler.sendToSession(session, message);
     };
 
     this.sendVideoToRoom = function () {
