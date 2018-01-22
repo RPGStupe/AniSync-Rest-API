@@ -420,6 +420,19 @@ function addAnimeToDatabaseFromId(id, callback) {
     })
 }
 
+function search(name, callback) {
+    if (name.length > 30) {
+        name = name.substr(0, 30);
+    }
+
+    getAnimeSearchMasteranime(name, function (data) {
+        callback(data);
+    })
+}
+
+module.exports.search = function (callback, name) {
+    search(name, callback);
+}
 
 module.exports.getAnimeLinksEmbedded = function (callback, name, episode) {
     getAnimeLinksEmbedded(name, episode, callback);
