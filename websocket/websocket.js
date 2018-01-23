@@ -30,7 +30,7 @@ const interval = setInterval(function ping() {
 }, 1000);
 
 wss.on('connection', function connection(ws, req) {
-    ws.send(JSON.stringify({status: "HALLO"}));
+    console.log("Someone is connecting...");
 
     ws.isAlive = true;
     ws.on('pong', heartbeat);

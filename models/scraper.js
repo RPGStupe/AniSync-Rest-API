@@ -95,7 +95,7 @@ function updateEpisodes(masteranimeDetailJson, animeDocRef, callback) {
             description: episode.info.description,
             masteranime_thumbnail: episode.thumbnail
         };
-        animeDocRef.collection("episodes").doc(item.info.episode).set(jsonEp).then(function () {
+        animeDocRef.doc(episode.info.episode).set(jsonEp).then(function () {
             counter++;
             if (counter === episodes.length) {
                 callback();
@@ -210,9 +210,7 @@ function addAnimeToWatchlist(user, name, episode, callback) {
     });
 }
 
-function getAnimeLinksEmbedded(name, episode, callback) {
-    getAnimeSearchMasteranime(name, function (jsonResult) {
-        var slug = jsonResult[0].slug;
+function getAnimeLinksEmbedded(slug, episode, callback) {
         var url = 'https://www.masterani.me/anime/watch/' + slug + '/' + episode;
         getRequest(url, function (body) {
             var handler = new htmlparser.DefaultHandler(function (error, dom) {
@@ -257,7 +255,6 @@ function getAnimeLinksEmbedded(name, episode, callback) {
             var parser = new htmlparser.Parser(handler);
             parser.parseComplete(body);
         });
-    })
 }
 
 function decodeMp4UploadLink(raw) {
@@ -278,8 +275,8 @@ function decodeMp4UploadLink(raw) {
     return link;
 }
 
-function getAnimeLinksDirect(name, episode, callback) {
-    getAnimeLinksEmbedded(name, episode, function (embedded) {
+function getAnimeLinksDirect(slug, episode, callback) {
+    getAnimeLinksEmbedded(slug, episode, function (embedded) {
         var resultJson = [];
         var counter = 0;
         var indexJson = 0;
@@ -413,6 +410,7 @@ function getAnimeDetailMasteranimeFromId(id, callback) {
 }
 
 function addAnimeToDatabaseFromId(id, callback) {
+    console.log("Adding to Database");
     getAnimeDetailMasteranimeFromId(id, function (result) {
         addAnimeEntryToDatabase(result, function (animeEntry) {
             callback(animeEntry);
@@ -430,12 +428,18 @@ function search(name, callback) {
     })
 }
 
+function loadAnime(slug, episode, callback) {
+    getAnimeLinksDirect(slug, episode, function (data) {
+        callback(data);
+    });
+}
+
 module.exports.search = function (callback, name) {
     search(name, callback);
 }
 
-module.exports.getAnimeLinksEmbedded = function (callback, name, episode) {
-    getAnimeLinksEmbedded(name, episode, callback);
+module.exports.getAnimeLinksEmbedded = function (callback, slug, episode) {
+    getAnimeLinksEmbedded(slug, episode, callback);
 };
 
 module.exports.getAnimeLinksDirect = function (callback, name, episode) {
@@ -456,4 +460,8 @@ module.exports.watchlistImport = function (callback, old_uid, new_uid) {
 
 module.exports.addAnimeToDatabaseFromId = function (id, callback) {
     addAnimeToDatabaseFromId(id, callback);
+};
+
+module.exports.loadAnime = function (callback, slug, episode) {
+    loadAnime(slug, episode, callback);
 };

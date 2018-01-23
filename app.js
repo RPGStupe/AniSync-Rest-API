@@ -1,10 +1,9 @@
 var express = require('express');
 var app = express();
-var bodyParser = require('body-parser');
 var Anime = require('./models/anime');
 var Scraper = require('./models/scraper');
-var Websocket = require('./websocket/websocket');
 const RoomHandler = require('./user/roomHandler');
+WebSocket = require('./websocket/websocket');
 
 
 app.use(function (req, res, next) {
@@ -34,6 +33,22 @@ app.get('/api/anime/search/:name', function (req, res) {
     Scraper.search(function (json) {
         res.json(json);
     }, req.params.name);
+});
+
+// TODO: multiple video sources and qualities
+app.get('/api/anime/loadAnime/:room/:slug/:episode', function (req, res) {
+    Scraper.loadAnime(function (json) {
+        res.json(json[0]);
+        const room = RoomHandler.getInstance().getRoomById(req.params.room);
+        if (room !== undefined) {
+            for (let i = 0; i < json.length; i++) {
+                if (json[i].host_id === 1) {
+                    room.addVideo(json[i].url_direct);
+                    break;
+                }
+            }
+        }
+    }, req.params.slug, req.params.episode);
 });
 
 app.get('/api/anime/getAnime/:name', function (req, res) {

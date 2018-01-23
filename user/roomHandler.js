@@ -15,6 +15,10 @@ let RoomHandler = function () {
         }
         return this.roomSession[index];
     };
+
+    this.getRoomById = function (id) {
+        return this.roomsId[id];
+    }
 };
 
 function Singleton() {
