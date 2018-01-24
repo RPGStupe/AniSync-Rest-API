@@ -72,15 +72,20 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
     RoomHandler.getInstance().roomsId[this.id] = this;
 
 
-    function updatePlaylistInfo(video) {
+    function updatePlaylistInfo(video, episode, details) {
         if (!video.hasInfo) {
-
+            video.animeTitle = details.info.title;
+            video.episode = episode;
+            video.episodeTitle = details.episodes[episode-1].info.title;
+            video.episodePoster = details.episodes[episode-1].thumbnail;
+            video.episodeCount = details.info.episode_count;
+            video.hasInfo = true;
         }
     }
 
     this.updatePlaylistInfoAll = function () {
         for (let video in this.playlist) {
-            updatePlaylistInfo(video);
+            // updatePlaylistInfo(video);
         }
     };
 
@@ -101,6 +106,7 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
                 episodeCount: video.episodeCount
             };
         }
+        console.log(message);
         UserSessionHandler.sendToRoom(this, message);
     };
 
@@ -276,11 +282,12 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
         }
     };
 
-    this.addVideo = function (url) {
-        this.playlist[this.playlist.length] = new Video.Video(url, 0);
-        if (this.playlist.length === 1) {
-            updatePlaylistInfo(this.playlist[0]);
-            if (this.playlist.length !== 0) {
+    this.addVideo = function (url, episode, details) {
+        const index = this.playlist.length;
+        this.playlist[index] = new Video.Video(url, 0);
+        if (this.playlist.length >= 1) {
+            updatePlaylistInfo(this.playlist[index], episode, details);
+            if (this.playlist.length !== 0 && index === 0) {
                 this.setVideo(this.playlist[0].url, this.playlist[0].episode);
             }
         }

@@ -36,18 +36,20 @@ app.get('/api/anime/search/:name', function (req, res) {
 });
 
 // TODO: multiple video sources and qualities
-app.get('/api/anime/loadAnime/:room/:slug/:episode', function (req, res) {
+app.get('/api/anime/loadAnime/:room/:id/:slug/:episode', function (req, res) {
     Scraper.loadAnime(function (json) {
         res.json(json[0]);
-        const room = RoomHandler.getInstance().getRoomById(req.params.room);
-        if (room !== undefined) {
-            for (let i = 0; i < json.length; i++) {
-                if (json[i].host_id === 1) {
-                    room.addVideo(json[i].url_direct);
-                    break;
+        Scraper.getAnimeDetailMasterAnimeFromId(function (details) {
+            const room = RoomHandler.getInstance().getRoomById(req.params.room);
+            if (room !== undefined) {
+                for (let i = 0; i < json.length; i++) {
+                    if (json[i].host_id === 1) {
+                        room.addVideo(json[i].url_direct, req.params.episode, details);
+                        break;
+                    }
                 }
             }
-        }
+        }, req.params.id);
     }, req.params.slug, req.params.episode);
 });
 
