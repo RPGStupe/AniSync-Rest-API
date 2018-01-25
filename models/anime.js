@@ -34,10 +34,22 @@ module.exports.getAnimeFromId = function (callback, id) {
                 })
             }
             snapshot.docs.forEach(function (doc) {
-                console.log("Anime found. Returning");
-                getAnimeFromDocumentId(doc.ref.id, function (result) {
-                    callback(result);
-                })
+                console.log("Anime found. Still adding to db cause of episode reasons");
+                Scraper.getAnimeDetailMasterAnimeFromId(function (data) {
+                    const entry = Scraper.createAnimeEntryDatabase(data);
+                    var animeRef = db.collection('anime');
+                    console.log("Getting anime details from masterani.me");
+                    animeRef.doc(doc.ref.id).set(entry).then(function () {
+                        console.log("Setting db entry...");
+                        Scraper.updateEpisodes(data, animeRef.doc(doc.ref.id).collection("episodes"), function () {
+                            console.log("Updating episodes");
+                            getAnimeFromDocumentId(doc.ref.id, function (result) {
+                                console.log("Getting document");
+                                callback(result);
+                            });
+                        });
+                    });
+                }, id);
             });
         }).catch(err => {
             console.log('Error getting documents', err);
@@ -51,14 +63,14 @@ function getAnimeFromDocumentId(documentId, callback) {
     animeRef.doc(documentId).get()
         .then(doc => {
             if (!doc.exists) {
-                callback({status:"Anime not found in database"})
+                callback({status: "Anime not found in database"})
             } else {
                 animeJson = doc.data();
                 var counter = 0;
                 animeRef.doc(documentId).collection("episodes").get().then(snapshot => {
                     animeJson.episodes = [];
-                    snapshot.docs.forEach(function(doc, index, docs) {
-                        animeJson.episodes[parseInt(doc.data().episode)-1] = doc.data();
+                    snapshot.docs.forEach(function (doc, index, docs) {
+                        animeJson.episodes[parseInt(doc.data().episode) - 1] = doc.data();
                         counter++;
                         if (counter === docs.length) {
                             callback(animeJson);
@@ -69,7 +81,7 @@ function getAnimeFromDocumentId(documentId, callback) {
         })
         .catch(err => {
             console.log('Error getting document', err);
-            callback({status:'Error getting document ' + err})
+            callback({status: 'Error getting document ' + err})
         });
 }
 

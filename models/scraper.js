@@ -469,3 +469,11 @@ module.exports.loadAnime = function (callback, slug, episode) {
 module.exports.getAnimeDetailMasterAnimeFromId = function (callback, id) {
     getAnimeDetailMasteranime(id, callback);
 };
+
+module.exports.createAnimeEntryDatabase = function (detailed) {
+    return createAnimeEntryDatabase(detailed);
+};
+
+module.exports.updateEpisodes = function (data, ref, callback) {
+    return updateEpisodes(data, ref, callback);
+};

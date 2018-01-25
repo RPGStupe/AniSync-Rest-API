@@ -73,13 +73,17 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
 
 
     function updatePlaylistInfo(video, episode, details) {
-        if (!video.hasInfo) {
+        if (!video.hasInfo && details !== undefined) {
             video.animeTitle = details.info.title;
             video.episode = episode;
             video.episodeTitle = details.episodes[episode-1].info.title;
             video.episodePoster = details.episodes[episode-1].thumbnail;
             video.episodeCount = details.info.episode_count;
             video.hasInfo = true;
+            video.masteranime_id = details.info.id;
+            video.masteranime_slug = details.info.slug;
+            video.poster = details.poster;
+            video.wallpaper = details.info.wallpaper_id + ".jpg";
         }
     }
 
@@ -100,10 +104,14 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
             const video = this.playlist[i];
             message.playlist[i] = {
                 title: video.animeTitle,
+                masteranime_slug: video.masteranime_slug,
                 episodeTitle: video.episodeTitle,
                 episodePoster: video.episodePoster,
                 episode: video.episode,
-                episodeCount: video.episodeCount
+                episodeCount: video.episodeCount,
+                masteranime_id: video.masteranime_id,
+                poster: video.poster,
+                wallpaper: video.wallpaper
             };
         }
         console.log(message);
@@ -169,10 +177,10 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
                 this.pause(this.timestamp, session, false);
             }
         }
-        const url = this.playlist[0].url;
+        const urls = this.playlist[0].urls;
         let message = {
             action: "video",
-            url: url
+            urls: urls
         };
         if (this.timestamp == null) {
             message['current'] = 0;
@@ -262,13 +270,13 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
         }
     };
 
-    this.setVideo = function (url, episode) {
+    this.setVideo = function (urls, episode) {
         this.episode = episode;
         this.timestamp = null;
         for (let i = 0; i < this.sessions.length; i++) {
             this.markReady(this.sessions[i], false);
         }
-        this.video = url;
+        this.video = urls;
         this.playing = false;
         this.sendVideoToRoom();
         if (this.anime != null) {
@@ -282,34 +290,41 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
         }
     };
 
-    this.addVideo = function (url, episode, details) {
+    this.addVideo = function (urls, episode, details) {
+        console.log(urls);
         const index = this.playlist.length;
-        this.playlist[index] = new Video.Video(url, 0);
+        this.playlist[index] = new Video.Video(urls, 0);
         if (this.playlist.length >= 1) {
             updatePlaylistInfo(this.playlist[index], episode, details);
             if (this.playlist.length !== 0 && index === 0) {
-                this.setVideo(this.playlist[0].url, this.playlist[0].episode);
+                this.setVideo(this.playlist[0].urls, this.playlist[0].episode);
             }
         }
         this.sendPlaylist();
     };
 
+    this.clearPlaylist = function () {
+        this.playlist = this.playlist.filter(function(n){ return n !== undefined });
+        };
+
     this.loadNextVideo = function () {
         let video = this.playlist[0];
         this.playlist[0] = undefined;
+        this.clearPlaylist();
         this.lastVideo = video;
         this.timestamp = undefined;
 
         // TODO: Auto play next episode
-        /*if (this.playlist.length === 0 && this.autoNext) {
-            this.episode++;
-            if (video != null) {
-                this.addVideo(this.get9animeLink(this._9animeLink));
-            }
-        } else */
+        // if (this.playlist.length > 0 && this.autoNext) {
+        //     this.episode++;
+        //     if (video != null) {
+        //         this.addVideo(this.get9animeLink(this._9animeLink));
+        //     }
+        // } else
         if (this.playlist.length !== 0) {
             this.sendPlaylist();
-            this.setVideo(this.playlist[0].url, this.playlist[0].episode);
+            this.setVideo(this.playlist[0].urls, this.playlist[0].episode);
+            this.play();
         } else {
             this.sendPlaylist();
         }

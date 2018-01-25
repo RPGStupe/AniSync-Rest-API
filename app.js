@@ -43,10 +43,8 @@ app.get('/api/anime/loadAnime/:room/:id/:slug/:episode', function (req, res) {
             const room = RoomHandler.getInstance().getRoomById(req.params.room);
             if (room !== undefined) {
                 for (let i = 0; i < json.length; i++) {
-                    if (json[i].host_id === 1) {
-                        room.addVideo(json[i].url_direct, req.params.episode, details);
+                        room.addVideo(json, req.params.episode, details);
                         break;
-                    }
                 }
             }
         }, req.params.id);
