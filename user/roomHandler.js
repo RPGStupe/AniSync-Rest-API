@@ -2,6 +2,7 @@ let RoomHandler = function () {
     this.roomSession = [];
     this.sessions = [];
     this.roomsId = [];
+    this.userScore = [];
 
     this.clearRoomHandlerArrays = function () {
         this.sessions = this.sessions.filter(function(n){ return n !== undefined });
@@ -18,6 +19,28 @@ let RoomHandler = function () {
 
     this.getRoomById = function (id) {
         return this.roomsId[id];
+    };
+
+    this.addUser = function(user) {
+        let thisUser = this.userScore[user.uid];
+        if (thisUser === undefined) {
+            this.userScore[user.uid] = {
+                connectionCount: 1,
+                scoreTime: 0
+            };
+        } else {
+            this.userScore[user.uid].connectionCount += 1;
+        }
+    };
+
+    this.removeUser = function (uid) {
+        let thisUser = this.userScore[uid];
+        if (thisUser !== undefined) {
+            this.userScore[uid].connectionCount -= 1;
+            if (this.userScore[uid].connectionCount === 0) {
+                this.userScore[uid].connectionCount = undefined;
+            }
+        }
     }
 };
 

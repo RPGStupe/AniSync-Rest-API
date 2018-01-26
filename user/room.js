@@ -2,6 +2,7 @@ const UserSessionHandler = require('../websocket/userSessionHandler');
 const RoomHandler = require('./roomHandler');
 const User = require('./user');
 const Video = require('./video');
+const UserModel = require('../models/user');
 
 module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
     this.userMap = [];
@@ -17,8 +18,10 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
     this._9animeLink = "";
     this.autoNext = false;
     this.anime = undefined;
-    this.current = undefined;
+    this.current = 0;
+    this.lastCurrent = 0;
     this.sessions = [];
+    this.seeking = false;
 
     do {
         this.id = Math.floor(Math.random() * (10000));
@@ -76,8 +79,8 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
         if (!video.hasInfo && details !== undefined) {
             video.animeTitle = details.info.title;
             video.episode = episode;
-            video.episodeTitle = details.episodes[episode-1].info.title;
-            video.episodePoster = details.episodes[episode-1].thumbnail;
+            video.episodeTitle = details.episodes[episode - 1].info.title;
+            video.episodePoster = details.episodes[episode - 1].thumbnail;
             video.episodeCount = details.info.episode_count;
             video.hasInfo = true;
             video.masteranime_id = details.info.id;
@@ -202,9 +205,33 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
         }
     };
 
+    this.addScore = function (uid) {
+        UserModel.addScoreToDB(uid);
+    };
+
+    this.handleUserScore = function () {
+        if (this.current - this.lastCurrent < 1.5) {
+            let msg = [];
+            for (let i = 0; i < this.userMap.length; i++) {
+                const uid = this.userMap[i].uid;
+                RoomHandler.getInstance().userScore[uid].scoreTime += this.current - this.lastCurrent;
+                console.log(uid + " time: " + RoomHandler.getInstance().userScore[uid].scoreTime);
+                const neededScore = 10 * RoomHandler.getInstance().userScore[uid].connectionCount;
+                if (RoomHandler.getInstance().userScore[uid].scoreTime >= neededScore) {
+                    RoomHandler.getInstance().userScore[uid].scoreTime -= neededScore;
+                    this.addScore(uid);
+                }
+            }
+            UserSessionHandler.sendToRoom(this, msg);
+        } else {
+            this.lastCurrent = this.current;
+        }
+    };
+
     this.removeSession = function (session) {
         const index = this.sessions.indexOf(session);
         this.readyStates[index] = undefined;
+        RoomHandler.getInstance().removeUser(this.userMap[index].uid);
         this.userMap[index] = undefined;
         this.sessions[index] = undefined;
         this.clearArrays();
@@ -304,8 +331,10 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
     };
 
     this.clearPlaylist = function () {
-        this.playlist = this.playlist.filter(function(n){ return n !== undefined });
-        };
+        this.playlist = this.playlist.filter(function (n) {
+            return n !== undefined
+        });
+    };
 
     this.loadNextVideo = function () {
         let video = this.playlist[0];

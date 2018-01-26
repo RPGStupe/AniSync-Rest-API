@@ -160,11 +160,23 @@ wss.on('connection', function connection(ws, req) {
             let room = RoomHandler.getInstance().getRoomBySession(ws);
             if (room !== undefined) {
                 console.log("Set current to: " + jsonMsg.current);
+                room.lastCurrent = room.current;
                 room.timestamp = jsonMsg.current;
                 room.current = jsonMsg.current;
+                room.handleUserScore();
             }
         } else if ('addToWatchlist' === jsonMsg.action) {
             //TODO: add watchlist
+        } else if ('seeking' === jsonMsg.action) {
+            let room = RoomHandler.getInstance().getRoomBySession(ws);
+            if (room !== undefined) {
+                room.seeking = true;
+            }
+        } else if ('seeked' === jsonMsg.action) {
+            let room = RoomHandler.getInstance().getRoomBySession(ws);
+            if (room !== undefined) {
+                room.seeking = false;
+            }
         }
     });
 });
