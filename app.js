@@ -1,6 +1,5 @@
 var express = require('express');
 var app = express();
-var Anime = require('./models/anime');
 var Scraper = require('./models/scraper');
 const RoomHandler = require('./user/roomHandler');
 WebSocket = require('./websocket/websocket');
@@ -29,38 +28,25 @@ app.get('/', function (req, res) {
     res.send('Hello World!');
 });
 
-app.get('/api/anime/search/:name', function (req, res) {
-    Scraper.search(function (json) {
-        res.json(json);
-    }, req.params.name);
+app.get('/api/anime/search/:name', async function (req, res) {
+    const json = await Scraper.search(req.params.name);
+    res.json(json);
 });
 
-// TODO: multiple video sources and qualities
-app.get('/api/anime/loadAnime/:room/:id/:slug/:episode', function (req, res) {
-    Scraper.loadAnime(function (json) {
-        res.json(json[0]);
-        Scraper.getAnimeDetailMasterAnimeFromId(function (details) {
-            const room = RoomHandler.getInstance().getRoomById(req.params.room);
-            if (room !== undefined) {
-                for (let i = 0; i < json.length; i++) {
-                        room.addVideo(json, req.params.episode, details);
-                        break;
-                }
-            }
-        }, req.params.id);
-    }, req.params.slug, req.params.episode);
+app.get('/api/anime/loadAnime/:room/:id/:slug/:episode', async function (req, res) {
+    const json = await Scraper.loadAnime(req.params.slug, req.params.episode);
+    const details = await Scraper.getAnimeDetailMasterAnimeFromId(req.params.id);
+
+    const room = RoomHandler.getInstance().getRoomById(req.params.room);
+    if (room !== undefined) {
+        room.addVideo(json, req.params.episode, details);
+    }
+    res.json(json[0]);
 });
 
-app.get('/api/anime/getAnime/:name', function (req, res) {
-    Anime.getAnime(function (json) {
-        res.json(json);
-    }, req.params.name);
-});
-
-app.get('/api/anime/getAnimeById/:id', function (req, res) {
-    Anime.getAnimeFromId(function (json) {
-        res.json(json);
-    }, req.params.id);
+app.get('/api/anime/getAnimeById/:id', async function (req, res) {
+    const json = await Scraper.getAnimeById(req.params.id);
+    res.json(json);
 });
 
 // app.get('/api/watchlistImport/:old_uid/:new_uid', function (req, res) {
@@ -69,34 +55,14 @@ app.get('/api/anime/getAnimeById/:id', function (req, res) {
 //     }, req.params.old_uid, req.params.new_uid)
 // });
 
-app.get('/api/anime/getAllAnime', function (req, res) {
-    Anime.getAllAnime(function (result) {
-        res.json(result);
-    });
+app.get('/api/anime/getAnimeLinksEmbedded/:name/:episode', async function (req, res) {
+    const result = await Scraper.getAnimeLinksEmbedded(req.params.name, req.params.episode);
+    res.json(result);
 });
 
-app.get('/api/anime/addAnime/:name', function (req, res) {
-    Scraper.addAnimeToDatabase(function (result) {
-        res.json(result);
-    }, req.params.name);
-});
-
-app.get('/api/watchlist/addAnime/:user/:name/:episode', function (req, res) {
-    Scraper.addAnimeToWatchlist(function (result) {
-        res.json(result);
-    }, req.params.user, req.params.name, req.params.episode);
-});
-
-app.get('/api/anime/getAnimeLinksEmbedded/:name/:episode', function (req, res) {
-    Scraper.getAnimeLinksEmbedded(function (result) {
-        res.json(result);
-    }, req.params.name, req.params.episode);
-});
-
-app.get('/api/anime/getAnimeLinksDirect/:name/:episode', function (req, res) {
-    Scraper.getAnimeLinksDirect(function (result) {
-        res.json(result);
-    }, req.params.name, req.params.episode);
+app.get('/api/anime/getAnimeLinksDirect/:name/:episode', async function (req, res) {
+    const result = await Scraper.getAnimeLinksDirect(req.params.name, req.params.episode);
+    res.json(result);
 });
 
 app.listen(3000);

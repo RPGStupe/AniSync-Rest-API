@@ -1,17 +1,14 @@
-var db = require('../firebase');
+const db = require('../firebase');
 
-function addScoreToDB(uid) {
-    db.collection('users').doc(uid).get().then(doc => {
-        const currentScore = doc.data().score;
-        console.log("Current score of " + uid + ": " + currentScore);
-        db.collection('users').doc(uid).update({
-            score: currentScore + 1
-        });
-    }).then(() => {
-        console.log("Score of " + uid + " updated");
+const addScoreToDB = async function (uid) {
+    const doc = await db.collection('users').doc(uid).get();
+    const currentScore = doc.data().score;
+    await db.collection('users').doc(uid).update({
+        score: currentScore + 1
     });
-}
-
-module.exports.addScoreToDB = function (uid) {
-    addScoreToDB(uid);
+    console.log("Score of " + uid + " updated");
 };
+
+module.exports = [
+    addScoreToDB
+];
