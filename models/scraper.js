@@ -197,6 +197,8 @@ const getAnimeLinksDirect = function (slug, episode) {
             if (itemJson.host_id === 1 || itemJson.host_id === 14 || itemJson.host_id === 20 || itemJson.host_id === 0) {
                 if (itemJson.host_id === 0) {
                     resultJson[indexJson] = itemJson;
+                    resultJson[indexJson].url_direct = resultJson[indexJson].url_embedded;
+                    delete resultJson[indexJson]["url_embedded"];
                     indexJson++;
                     counter++;
                     if (counter === data.length) {
