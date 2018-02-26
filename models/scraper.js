@@ -99,6 +99,7 @@ const getAnimeLinksEmbedded = function (slug, episode) {
         const body = await getRequest(url);
         const handler = new htmlparser.DefaultHandler(function (error, dom) {
             if (error) {
+                console.log(error);
                 reject({});
             }
             else {
@@ -108,11 +109,37 @@ const getAnimeLinksEmbedded = function (slug, episode) {
                             item.children.forEach(item => {
                                 if (item.raw.indexOf("var args") !== -1) {
                                     let args = item.raw.replace("var args = ", "");
-                                    args = args.substring(args.indexOf("mirrors:") + "mirrors:".length, args.indexOf("auto_update:")).trim();
-                                    const argsJson = JSON.parse(args.substr(0, args.length - 1));
+                                    const start = args.indexOf("mirrors:");
+                                    if(start !== -1) {
+                                        args = args.substring(start + "mirrors:".length, args.indexOf("auto_update:")).trim();
+                                        console.log(args);
+                                        const argsJson = JSON.parse(args.substr(0, args.length - 1));
+                                        const resultJson = [];
+                                        argsJson.forEach(function (item, index, array) {
+                                            let type;
+                                            if (item.type === 1) {
+                                                type = "sub";
+                                            } else if (item.type === 2) {
+                                                type = "dub";
+                                            }
+                                            resultJson[index] = {
+                                                type: type,
+                                                host_id: item.host_id,
+                                                host_name: item.host.name,
+                                                quality: item.quality,
+                                                url_embedded: item.host.embed_prefix + item.embed_id + (item.host.embed_suffix === null ? "" : item.host.embed_suffix)
+                                            };
+                                            if (index === array.length - 1) {
+                                                resolve(resultJson);
+                                            }
+                                        })
+                                    }
+                                } else if (item.raw.indexOf("var videos") !== -1) {
+                                    let args = item.raw.match("var videos = (\\[.*\\])");
+                                    let videos = JSON.parse(args[1]);
                                     const resultJson = [];
-                                    argsJson.forEach(function (item, index, array) {
-                                        let type;
+                                    videos.forEach(function (item, index, array) {
+                                        let type = "sub";
                                         if (item.type === 1) {
                                             type = "sub";
                                         } else if (item.type === 2) {
@@ -120,20 +147,21 @@ const getAnimeLinksEmbedded = function (slug, episode) {
                                         }
                                         resultJson[index] = {
                                             type: type,
-                                            host_id: item.host_id,
-                                            host_name: item.host.name,
-                                            quality: item.quality,
-                                            url_embedded: item.host.embed_prefix + item.embed_id + (item.host.embed_suffix === null ? "" : item.host.embed_suffix)
+                                            host_id: 0,
+                                            host_name: "masterani.me",
+                                            quality: item.res,
+                                            url_embedded: item.src
                                         };
                                         if (index === array.length - 1) {
                                             resolve(resultJson);
                                         }
-                                    })
+                                    });
                                 }
                             })
                         }
                     }
                 });
+                resolve([]);
             }
         });
         const parser = new htmlparser.Parser(handler);
@@ -166,48 +194,69 @@ const getAnimeLinksDirect = function (slug, episode) {
         let indexJson = 0;
         embedded.forEach(async function (itemJson, index, data) {
             const url = itemJson.url_embedded;
-            if (itemJson.host_id === 1 || itemJson.host_id === 14) {
-                const body = await getRequest(url);
-                const handler = new htmlparser.DefaultHandler(function (error, dom) {
-                    if (error) {
-                        console.log(error);
-                    }
-                    else {
-                        if (itemJson.host_id === 1) {
-                            if (dom[0].raw.indexOf('File was deleted') === -1) {
-                                dom[0].children[3].children.forEach(function (item) {
-                                    if (item.name === 'script' && item.children !== undefined) {
-                                        item.children.forEach(function (item) {
-                                            if (item.raw.indexOf('eval(') !== -1) {
-                                                const linkDirect = decodeMp4UploadLink(item.raw);
-                                                resultJson[indexJson] = itemJson;
-                                                resultJson[indexJson].url_direct = linkDirect;
-                                                indexJson++;
-                                            }
-                                        })
-                                    }
-                                })
-                            }
-                        } else if (itemJson.host_id === 14) {
-                            const linkDirect = dom[2].children[3].children[7].children[1].children[3].children[0].raw.match('https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*)')[0];
-                            resultJson[indexJson] = itemJson;
-                            resultJson[indexJson].url_direct = linkDirect;
-                            indexJson++;
-                        }
-                    }
+            if (itemJson.host_id === 1 || itemJson.host_id === 14 || itemJson.host_id === 20 || itemJson.host_id === 0) {
+                if (itemJson.host_id === 0) {
+                    resultJson[indexJson] = itemJson;
+                    indexJson++;
                     counter++;
                     if (counter === data.length) {
                         resolve(resultJson);
                     }
-                });
-                const parser = new htmlparser.Parser(handler);
-                parser.parseComplete(body);
+                } else {
+                    const body = await getRequest(url);
+                    const handler = new htmlparser.DefaultHandler(function (error, dom) {
+                        if (error) {
+                            console.log(error);
+                        }
+                        else {
+                            if (itemJson.host_id === 1) {
+                                if (dom[0].raw.indexOf('File was deleted') === -1) {
+                                    dom[0].children[3].children.forEach(function (item) {
+                                        if (item.name === 'script' && item.children !== undefined) {
+                                            item.children.forEach(function (item) {
+                                                if (item.raw.indexOf('eval(') !== -1) {
+                                                    const linkDirect = decodeMp4UploadLink(item.raw);
+                                                    resultJson[indexJson] = itemJson;
+                                                    resultJson[indexJson].url_direct = linkDirect;
+                                                    indexJson++;
+                                                }
+                                            })
+                                        }
+                                    })
+                                }
+                            } else if (itemJson.host_id === 14) {
+                                const linkDirect = dom[2].children[3].children[7].children[1].children[3].children[0].raw.match('https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*)')[0];
+                                resultJson[indexJson] = itemJson;
+                                resultJson[indexJson].url_direct = linkDirect;
+                                indexJson++;
+                            } else if (itemJson.host_id === 20) {
+                                //tiwi.kiwi
+                                let linkDirectArr = body.match('https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*)\\.mpd');
+                                if (linkDirectArr === null) {
+                                    linkDirectArr = body.match('https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*)\\.mp4');
+                                }
+                                if (linkDirectArr !== null) {
+                                    resultJson[indexJson] = itemJson;
+                                    resultJson[indexJson].url_direct = linkDirectArr[0].replace(/.$/, "4");
+                                    indexJson++;
+                                }
+                            }
+                        }
+                        counter++;
+                        if (counter === data.length) {
+                            resolve(resultJson);
+                        }
+                    });
+                    const parser = new htmlparser.Parser(handler);
+                    parser.parseComplete(body);
+                }
             } else {
                 counter++;
                 if (counter === data.length) {
                     resolve(resultJson);
                 }
             }
+
         });
     });
 };

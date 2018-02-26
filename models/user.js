@@ -9,6 +9,4 @@ const addScoreToDB = async function (uid) {
     console.log("Score of " + uid + " updated");
 };
 
-module.exports = [
-    addScoreToDB
-];
+module.exports.addScoreToDB = addScoreToDB;
