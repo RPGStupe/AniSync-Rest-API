@@ -231,7 +231,9 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
     this.removeSession = function (session) {
         const index = this.sessions.indexOf(session);
         this.readyStates[index] = undefined;
-        RoomHandler.getInstance().removeUser(this.userMap[index].uid);
+        if (this.userMap[index] !== undefined) {
+            RoomHandler.getInstance().removeUser(this.userMap[index].uid);
+        }
         this.userMap[index] = undefined;
         this.sessions[index] = undefined;
         this.clearArrays();
