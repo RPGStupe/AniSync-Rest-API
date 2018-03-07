@@ -32,7 +32,7 @@ const getAnimeById = function (id) {
         } else {
             const data = await getAnimeDetailMasterAnimeFromId(id);
             const entry = createAnimeEntryDatabase(data);
-            updateEpisodes(data,entry);
+            updateEpisodes(data, entry);
             resolve(entry);
         }
     });
@@ -110,7 +110,7 @@ const getAnimeLinksEmbedded = function (slug, episode) {
                                 if (item.raw.indexOf("var args") !== -1) {
                                     let args = item.raw.replace("var args = ", "");
                                     const start = args.indexOf("mirrors:");
-                                    if(start !== -1) {
+                                    if (start !== -1) {
                                         args = args.substring(start + "mirrors:".length, args.indexOf("auto_update:")).trim();
                                         console.log(args);
                                         const argsJson = JSON.parse(args.substr(0, args.length - 1));
@@ -214,17 +214,23 @@ const getAnimeLinksDirect = function (slug, episode) {
                             if (itemJson.host_id === 1) {
                                 if (dom[0].raw.indexOf('File was deleted') === -1) {
                                     dom[0].children[3].children.forEach(function (item) {
-                                        if (item.name === 'script' && item.children !== undefined) {
+                                        if (item.name === 'div' && item.children !== undefined) {
                                             item.children.forEach(function (item) {
-                                                if (item.raw.indexOf('eval(') !== -1) {
-                                                    const linkDirect = decodeMp4UploadLink(item.raw);
-                                                    resultJson[indexJson] = itemJson;
-                                                    resultJson[indexJson].url_direct = linkDirect;
-                                                    indexJson++;
+                                                if (item.name === 'script' && item.children !== undefined) {
+                                                    item.children.forEach(function (item) {
+                                                        if (item.raw.indexOf('split(') !== -1) {
+                                                            const linkDirect = decodeMp4UploadLink(item.raw);
+                                                            resultJson[indexJson] = itemJson;
+                                                            resultJson[indexJson].url_direct = linkDirect;
+                                                            indexJson++;
+                                                        }
+                                                    })
                                                 }
-                                            })
+                                            });
                                         }
                                     })
+                                } else {
+                                    console.log('File was deleted');
                                 }
                             } else if (itemJson.host_id === 14) {
                                 const linkDirect = dom[2].children[3].children[7].children[1].children[3].children[0].raw.match('https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*)')[0];
