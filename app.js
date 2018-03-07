@@ -3,6 +3,7 @@ var app = express();
 var Scraper = require('./models/scraper');
 const RoomHandler = require('./user/roomHandler');
 WebSocket = require('./websocket/websocket');
+const notificationUpdater = require('./util/notificationUpdater');
 
 
 app.use(function (req, res, next) {
@@ -69,3 +70,7 @@ app.listen(3000);
 
 
 console.log('Running on port 3000...');
+
+notificationUpdater.start();
+
+console.log('Notification updates started');
