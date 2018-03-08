@@ -1,5 +1,6 @@
 const request = require('request');
 const db = require('../firebase');
+const FieldValue = require('firebase-admin').firestore.FieldValue;
 
 const releaseUrl = "https://www.masterani.me/api/releases";
 let timer;
@@ -69,7 +70,8 @@ function updateForUsers(notification, users) {
                     if (querySnapshot.empty && Number(users[uid]) === notification.currentEpisode - 1) {
                         console.log(notification);
                         notificationsRef.add(notification)
-                            .then(function () {
+                            .then(function (ref) {
+                                ref.update({updatedAt: FieldValue.serverTimestamp()});
                                 console.log('added ' + notification + " for " + uid);
                             })
                             .catch(function (error) {
@@ -81,6 +83,11 @@ function updateForUsers(notification, users) {
                             if(item.data().currentEpisode !== notification.currentEpisode) {
                                 notificationsRef.doc(item.id).update(notification).then(function () {
                                     console.log('Successfully updated the notification with id ', item.id)
+                                }).catch(function (error) {
+                                    console.log('Something went wrong while updating a notification: ', error);
+                                });
+                                notificationsRef.doc(item.id).update({updatedAt: FieldValue.serverTimestamp()}).then(function () {
+                                    console.log('Successfully updated creation time for id ', item.id)
                                 }).catch(function (error) {
                                     console.log('Something went wrong while updating a notification: ', error);
                                 });
