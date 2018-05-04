@@ -64,7 +64,7 @@ wss.on('connection', function connection(ws, req) {
             if (roomOld !== undefined) {
                 roomOld.removeSession(ws);
             }
-            new Room.Room(ws, name, jsonMsg.uid, jsonMsg.isAnonymous);
+            new Room.Room(ws, name, jsonMsg.uid, jsonMsg.avatarUrl, jsonMsg.isAnonymous);
         } else if ('join' === jsonMsg.action) {
             let roomOld = RoomHandler.getInstance().getRoomBySession(ws);
             if (roomOld !== undefined) {
@@ -79,7 +79,7 @@ wss.on('connection', function connection(ws, req) {
                 };
                 UserSessionHandler.sendToSession(ws, message);
             } else {
-                room.addSession(ws, jsonMsg.name, jsonMsg.uid, jsonMsg.isAnonymous);
+                room.addSession(ws, jsonMsg.name, jsonMsg.uid, jsonMsg.avatarUrl, jsonMsg.isAnonymous);
             }
         } else if ('leave' === jsonMsg.action) {
             let room = RoomHandler.getInstance().getRoomBySession(ws);

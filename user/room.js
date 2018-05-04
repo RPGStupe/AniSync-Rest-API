@@ -4,7 +4,7 @@ const User = require('./user');
 const Video = require('./video');
 const UserModel = require('../models/user');
 
-module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
+module.exports.Room = function (host, hostname, hostuid, hostavatar, isHostAnonymous) {
     this.userMap = [];
     this.readyStates = [];
     this.video = "";
@@ -47,12 +47,12 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
         UserSessionHandler.sendToRoom(this, message);
     };
 
-    this.addSession = function (session, name, uid, isUserAnonymous) {
+    this.addSession = function (session, name, uid, avatar, isUserAnonymous) {
         this.avatarUrl = "https://firebasestorage.googleapis.com/v0/b/proxsync.appspot.com/o/panda.svg?alt=media&token=6f4d5bf1-af69-4211-994d-66655456d91a";
         if (name.indexOf("<") !== -1) {
             name = "User " + Math.floor((Math.random() * (10000)));
         }
-        this.userMap[this.userMap.length] = new User.User(uid, name, this.avatarUrl, isUserAnonymous);
+        this.userMap[this.userMap.length] = new User.User(uid, name, avatar, isUserAnonymous);
         this.readyStates[this.readyStates.length] = false;
         this.sessions[this.sessions.length] = session;
         const message = {
@@ -71,7 +71,7 @@ module.exports.Room = function (host, hostname, hostuid, isHostAnonymous) {
     };
 
 
-    this.addSession(host, hostname, hostuid, isHostAnonymous);
+    this.addSession(host, hostname, hostuid, hostavatar, isHostAnonymous);
     RoomHandler.getInstance().roomsId[this.id] = this;
 
 
