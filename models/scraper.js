@@ -194,7 +194,7 @@ const getAnimeLinksDirect = function (slug, episode) {
         let indexJson = 0;
         embedded.forEach(async function (itemJson, index, data) {
             const url = itemJson.url_embedded;
-            if (itemJson.host_id === 1 || itemJson.host_id === 14 || itemJson.host_id === 20 || itemJson.host_id === 0) {
+            if (itemJson.host_id === 1/* || itemJson.host_id === 14*/ || itemJson.host_id === 20 || itemJson.host_id === 0) {
                 if (itemJson.host_id === 0) {
                     resultJson[indexJson] = itemJson;
                     resultJson[indexJson].url_direct = resultJson[indexJson].url_embedded;
